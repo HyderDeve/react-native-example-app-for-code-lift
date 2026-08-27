@@ -12,8 +12,12 @@ export default function App() {
       <Link href="/onboarding" className="mt-4 rounded bg-primary text-white p-4" >Go to Onboarding</Link>
       <Link href="/(auth)/sign-in" className="mt-4 rounded bg-primary text-white p-4" >Go to Sign In</Link>
       <Link href="/(auth)/sign-up" className="mt-4 rounded bg-primary text-white p-4" >Go to Sign Up</Link>
-      <Link href="/subscriptions/spotify">Spotify Subscription</Link>
-      {/* <Link></Link> */}
+      {/* Dynamic segments like subscriptions/[id].tsx can't be reached with a plain
+      string href — "/subscriptions/spotify" isn't a literal route Expo Router knows
+      about, only the pattern "/subscriptions/[id]" is. Fill the param via object form: */}
+      <Link href={{ pathname: '/subscriptions/[id]', params: { id: 'spotify' } }}>
+        Spotify Subscription
+      </Link>
     </View>
   );
 }
