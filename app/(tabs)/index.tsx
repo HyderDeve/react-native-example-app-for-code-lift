@@ -1,7 +1,7 @@
 import "@/global.css";
+import { Link } from "expo-router";
 import React from "react";
 import { Text, View } from "react-native";
-import {Link} from "expo-router";
 
 export default function App() {
   return (
@@ -15,7 +15,7 @@ export default function App() {
       {/* Dynamic segments like subscriptions/[id].tsx can't be reached with a plain
       string href — "/subscriptions/spotify" isn't a literal route Expo Router knows
       about, only the pattern "/subscriptions/[id]" is. Fill the param via object form: */}
-      <Link href={{ pathname: '/subscriptions/[id]', params: { id: 'spotify' } }}>
+      <Link href={{ pathname: '/subscriptions/[id]', params: { id: 'spotify' }}} className = "mt-4 rounded bg-primary text-white p-4">
         Spotify Subscription
       </Link>
     </View>
