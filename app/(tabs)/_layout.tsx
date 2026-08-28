@@ -1,26 +1,52 @@
-import {Tabs} from 'expo-router'
 import { tabs } from "@/constants/data";
-import React from 'react'
-import clsx from 'clsx'
-import { View } from 'react-native';
-import { Image } from 'expo-image';
+import { colors, components } from '@/constants/theme';
+import clsx from 'clsx';
+import { Tabs } from 'expo-router';
+import React from 'react';
+import { Image, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const TabLayout = () => {
+const tabBar = components.tabBar;
 
-    const TabIcon = ({focused, icon} : TabIconProps) => {
+const TabIcon = ({focused, icon} : TabIconProps) => {
         return (
             <View className='tabs-icon'>
-                <View className={clsx('tabs-pill', focused) &&
-                    'tabs-active'}>
-                        <Image source = {icon} className='tabs-glyph' />
+                <View className={clsx('tabs-pill', focused && 'tabs-active')}>
+                        <Image source = {icon}  style = {{width : 24, height : 24}} />
                 </View>
             </View>
         )
     }
 
 
-    return <Tabs 
-    screenOptions={{ headerShown: false }}
+const TabLayout = () => {
+
+    const insets = useSafeAreaInsets();
+
+
+    return <Tabs // This is the floating tabs layout component which is made like this for future reference 
+    screenOptions={{ 
+        headerShown: false,
+        tabBarShowLabel : false, 
+        tabBarStyle : {
+            position : 'absolute',
+            bottom : Math.max(insets.bottom, tabBar.horizontalInset),
+            height : tabBar.height,
+            marginHorizontal : tabBar.horizontalInset,
+            borderRadius : tabBar.radius,
+            backgroundColor : colors.primary,
+            borderTopWidth : 0,
+            elevation : 0
+        },
+        tabBarItemStyle : {
+            paddingVertical : tabBar.height / 2 - tabBar.iconFrame / 1.6
+        },
+        tabBarIconStyle : {
+            width : tabBar.iconFrame,
+            height : tabBar.iconFrame,
+            alignItems : 'center',
+        }
+    }}
     >
         {tabs.map((tab)=> (
             <Tabs.Screen 

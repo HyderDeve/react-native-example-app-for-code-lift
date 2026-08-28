@@ -45,23 +45,22 @@
     --font-sans-extrabold: sans-extrabold;
 }
 
-@layer components {
-    .tabs-icon {
-        @apply size-12 items-center justify-center;
-    }
+@utility tabs-icon {
+    @apply w-12 h-12 items-center justify-center;
+}
 
-    .tabs-pill {
-        @apply size-12 items-center justify-center rounded-full bg-transparent;
-    }
+@utility tabs-pill {
+    @apply w-12 h-12 items-center justify-center rounded-full bg-transparent;
+}
 
-    .tabs-active {
-        @apply bg-accent;
-    }
-
-    .tabs-glyph {
+@utility tabs-active {
+    @apply bg-accent;
+}
+@utility tabs-glyph {
         @apply size-6;
-    }
+}
 
+@layer components {
     .home-header {
         @apply mb-2.5 flex-row items-center justify-between;
     }
