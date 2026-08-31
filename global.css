@@ -37,7 +37,9 @@
     --spacing-24: 96px;
     --spacing-30: 120px;
 
-    --font-sans: sans-regular;
+    --font-sans: sans-regular; 
+     /*this is important as these are the variables I have setted for the new text in the main app's layout file using the fontsLoaded variable and the useEffect hook
+     also these variables the blue ones will have the same name defined there before the require function to apply and use the fonts with expo-fonts */
     --font-sans-light: sans-light;
     --font-sans-medium: sans-medium;
     --font-sans-semibold: sans-semibold;
