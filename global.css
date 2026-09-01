@@ -94,11 +94,11 @@
     }
 
     @utility home-balance-amount {
-        @apply text-3xl font-sans-extrabold text-white;
+        @apply text-2xl font-sans-extrabold text-white;
     }
 
     @utility home-balance-date {
-        @apply text-2xl font-sans-medium text-white;
+        @apply text-xl font-sans-medium text-white;
     }
 
     @utility list-head {
