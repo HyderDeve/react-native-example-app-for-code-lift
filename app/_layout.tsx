@@ -1,6 +1,6 @@
 import { SplashScreen, Stack } from "expo-router";
 import '@/global.css'
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useFonts } from "expo-font";
 
 export default function RootLayout() {

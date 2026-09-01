@@ -1,5 +1,4 @@
 import { View, Text } from 'react-native'
-import React from 'react'
 import { Link } from 'expo-router'
 
 // Route convention: folders wrapped in parentheses, e.g. (auth), are Expo Router

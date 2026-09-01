@@ -37,9 +37,7 @@
     --spacing-24: 96px;
     --spacing-30: 120px;
 
-    --font-sans: sans-regular; 
-     /*this is important as these are the variables I have setted for the new text in the main app's layout file using the fontsLoaded variable and the useEffect hook
-     also these variables the blue ones will have the same name defined there before the require function to apply and use the fonts with expo-fonts */
+    --font-sans: sans-regular;
     --font-sans-light: sans-light;
     --font-sans-medium: sans-medium;
     --font-sans-semibold: sans-semibold;
@@ -47,22 +45,23 @@
     --font-sans-extrabold: sans-extrabold;
 }
 
-@utility tabs-icon {
-    @apply w-12 h-12 items-center justify-center;
-}
-
-@utility tabs-pill {
-    @apply w-12 h-12 items-center justify-center rounded-full bg-transparent;
-}
-
-@utility tabs-active {
-    @apply bg-accent;
-}
-@utility tabs-glyph {
-        @apply size-6;
-}
-
 @layer components {
+    .tabs-icon {
+        @apply size-12 items-center justify-center;
+    }
+
+    .tabs-pill {
+        @apply size-12 items-center justify-center rounded-full bg-transparent;
+    }
+
+    .tabs-active {
+        @apply bg-accent;
+    }
+
+    .tabs-glyph {
+        @apply size-6;
+    }
+
     .home-header {
         @apply mb-2.5 flex-row items-center justify-between;
     }
