@@ -5,7 +5,11 @@ import { styled } from 'nativewind';
 import {icons} from "@/constants/icons";
 import images from '@/constants/images';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { HOME_USER } from "@/constants/data";
+import { HOME_BALANCE, HOME_USER } from "@/constants/data";
+// import ListHeading from "@/components/ListHaeding";
+import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
+import { formatCurrency } from "@/lib/utils";
+import dayjs from "dayjs";
 
 
 const SafeAreaView = styled(RNSafeAreaView);
@@ -28,9 +32,15 @@ export default function App() {
         <View className="home-balance-card">
           <Text className="home-balance-label">Balance</Text>
           <View className="home-balance-row">
-            <Text className="home-balance-amount"></Text>
+            <Text className="home-balance-amount">{formatCurrency(HOME_BALANCE.amount)}</Text>
+            <Text className="home-balance-date">{dayjs(HOME_BALANCE.nextRenewalDate).format('MM/DD')}</Text>
           </View>
         </View>
+
+        {/* <View className="">
+          <ListHeading title="upcoming"/>
+          <ListHeading title="All Subscriptions"/>
+        </View> */}
       
       
       {/* <Text className="text-5xl font-sans-extrabold">Home</Text>
