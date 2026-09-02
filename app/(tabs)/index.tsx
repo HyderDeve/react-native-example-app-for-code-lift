@@ -1,12 +1,12 @@
 import "@/global.css";
 // import { Link } from "expo-router";
-import { Text, View, Image as RNImage } from "react-native";
+import { Text, View, Image as RNImage, FlatList } from "react-native";
 import { styled } from 'nativewind';
 import {icons} from "@/constants/icons";
 import images from '@/constants/images';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { HOME_BALANCE, HOME_USER } from "@/constants/data";
-// import ListHeading from "@/components/ListHaeding";
+import { HOME_BALANCE, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
+import ListHeading from "@/components/ListHaeding";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import { formatCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
@@ -20,12 +20,12 @@ export default function App() {
       <SafeAreaView className="flex-1 bg-background p-5">
 
         <View className="home-header">
-          <View className="home-user">
-            <Image source={images.avatar} className="home-avatar"/>
+          <View className="home-user" >
+            <Image source={images.avatar} className="home-avatar" style = {{width : 58, height : 58}}/>
             <Text className="home-user-name">{HOME_USER.name}</Text>
           </View>
           <View>
-            <Image source={icons.add} className="home-add-icon"></Image>
+            <Image source={icons.add} className="home-add-icon" style = {{width : 36, height : 36}}></Image>
           </View>
         </View>
 
@@ -37,12 +37,21 @@ export default function App() {
           </View>
         </View>
 
-        {/* <View className="">
-          <ListHeading title="upcoming"/>
-          <ListHeading title="All Subscriptions"/>
-        </View> */}
+        <View>
+          <ListHeading title="Upcoming"/>
+
+          <FlatList data={UPCOMING_SUBSCRIPTIONS} 
+          renderItem={({item}) => (<UpcomingSubscriptionCard { ... item }/>)}
+          keyExtractor={(item) => item.id}
+          horizontal // to make it horizontal
+          showsHorizontalScrollIndicator = {false} // to hide scrollbar
+          ListEmptyComponent={<Text className="home-empty-state">No Upcoming Renewals Yet</Text>}
+          />
+        </View>
       
-      
+        <View>
+          <ListHeading title = 'All Subscription'/>
+        </View>
       {/* <Text className="text-5xl font-sans-extrabold">Home</Text>
       <Link href="/onboarding" className="mt-4 fonts-sans-bold rounded bg-primary text-white p-4" >Go to Onboarding</Link>
       <Link href="/(auth)/sign-in" className="mt-4 fonts-sans-bold rounded bg-primary text-white p-4" >Go to Sign In</Link>
