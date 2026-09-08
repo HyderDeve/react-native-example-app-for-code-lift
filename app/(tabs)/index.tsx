@@ -25,10 +25,6 @@ export default function App() {
   return (
       <SafeAreaView className="flex-1 bg-background p-5">
 
-        
-        <View className="flex-1">
-          <ListHeading title = 'All Subscription'/>
-
           <FlatList 
             ListHeaderComponent={() => (
               <>
@@ -50,7 +46,7 @@ export default function App() {
           </View>
         </View>
 
-        <View>
+        <View className="mb-5">
           <ListHeading title="Upcoming"/>
 
           <FlatList data={UPCOMING_SUBSCRIPTIONS} 
@@ -61,6 +57,9 @@ export default function App() {
           ListEmptyComponent={<Text className="home-empty-state">No Upcoming Renewals Yet</Text>}
           />
         </View>
+
+        <ListHeading title = 'All Subscriptions'/>
+
               </>
   )}
             data={HOME_SUBSCRIPTIONS}
@@ -74,9 +73,9 @@ export default function App() {
             ItemSeparatorComponent={()=> <View className="h-4"/>}
             showsVerticalScrollIndicator = {false}
             ListEmptyComponent={<Text className="home-empty-state">No Subscriptions Yet.</Text>}
+            contentContainerClassName="pb-30"
           />
           
-        </View>
       {/* <Text className="text-5xl font-sans-extrabold">Home</Text>
       <Link href="/onboarding" className="mt-4 fonts-sans-bold rounded bg-primary text-white p-4" >Go to Onboarding</Link>
       <Link href="/(auth)/sign-in" className="mt-4 fonts-sans-bold rounded bg-primary text-white p-4" >Go to Sign In</Link>
