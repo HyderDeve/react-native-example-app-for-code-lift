@@ -30,7 +30,7 @@ export default function App() {
               <>
               <View className="home-header">
           <View className="home-user" >
-            <Image source={images.avatar} className="home-avatar" style = {{width : 72, height : 72}}/>
+            <Image source={images.avatar} className="home-avatar"/>
             <Text className="home-user-name">{HOME_USER.name}</Text>
           </View>
           <View>

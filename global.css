@@ -70,7 +70,7 @@
     }
 
     @utility home-avatar {
-        @apply size-4 rounded-full;
+        @apply size-20 rounded-full;
     }
 
     @utility home-user-name {
