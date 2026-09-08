@@ -2,7 +2,6 @@ import { tabs } from "@/constants/data";
 import { colors, components } from '@/constants/theme';
 import clsx from 'clsx';
 import { Tabs } from 'expo-router';
-import React from 'react';
 import { Image, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +13,7 @@ const TabIcon = ({focused, icon} : TabIconProps) => {
                 <View className={clsx('tabs-pill', focused && 'tabs-active')}>
                         <Image source = {icon}  style = {{width : 24, height : 24}} />
                 </View>
-            </View>
+            </View> 
         )
     }
 
