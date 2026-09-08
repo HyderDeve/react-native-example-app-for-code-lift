@@ -6,7 +6,7 @@ import {icons} from "@/constants/icons";
 import images from '@/constants/images';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { HOME_BALANCE, HOME_SUBSCRIPTIONS, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
-import ListHeading from "@/components/ListHaeding";
+import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
 import { formatCurrency } from "@/lib/utils";
