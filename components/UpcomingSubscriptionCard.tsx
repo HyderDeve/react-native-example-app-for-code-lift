@@ -5,7 +5,7 @@ const UpcomingSubscriptionCard = ({name, price, daysLeft, icon, currency} : Upco
   return (
     <View className='upcoming-card' >
       <View className='upcoming-row'>
-        <Image source = {icon} className = 'upcoming-icon' style = {{width : 36, height : 36}}></Image>
+        <Image source = {icon} className = 'size-9'/>
         <View>
           <Text className='upcoming-price'>{formatCurrency(price, currency)}</Text>
           <Text className='upcoming-meta' numberOfLines={1}>{daysLeft > 1 ? `${daysLeft} days left` : 'Last day'}</Text>
