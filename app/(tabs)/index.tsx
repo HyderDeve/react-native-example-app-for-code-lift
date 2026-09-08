@@ -25,7 +25,14 @@ export default function App() {
   return (
       <SafeAreaView className="flex-1 bg-background p-5">
 
-        <View className="home-header">
+        
+        <View className="flex-1">
+          <ListHeading title = 'All Subscription'/>
+
+          <FlatList 
+            ListHeaderComponent={() => (
+              <>
+              <View className="home-header">
           <View className="home-user" >
             <Image source={images.avatar} className="home-avatar" style = {{width : 72, height : 72}}/>
             <Text className="home-user-name">{HOME_USER.name}</Text>
@@ -54,11 +61,8 @@ export default function App() {
           ListEmptyComponent={<Text className="home-empty-state">No Upcoming Renewals Yet</Text>}
           />
         </View>
-      
-        <View>
-          <ListHeading title = 'All Subscription'/>
-
-          <FlatList 
+              </>
+  )}
             data={HOME_SUBSCRIPTIONS}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (<SubscriptionCard {... item}
