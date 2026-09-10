@@ -52,7 +52,7 @@ export default function App() {
           <FlatList data={UPCOMING_SUBSCRIPTIONS} 
           renderItem={({item}) => (<UpcomingSubscriptionCard { ... item }/>)}
           keyExtractor={(item) => item.id}
-          horizontal // to make it horizontal
+          horizontal // to make scrolling and its orientation horizontal
           showsHorizontalScrollIndicator = {false} // to hide scrollbar
           ListEmptyComponent={<Text className="home-empty-state">No Upcoming Renewals Yet</Text>}
           />
