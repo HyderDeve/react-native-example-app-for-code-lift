@@ -1,255 +1,279 @@
 import '@/global.css';
-import { getClerkErrorMessage, normalizeEmail, validateEmail, validatePassword } from '@/lib/auth';
+import { normalizeEmail, validateEmail} from '@/lib/auth';
 import { useSignIn } from '@clerk/expo';
-import { Link, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Link, useRouter, type Href } from 'expo-router';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform} from 'react-native';
+import { useState } from 'react';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { styled } from 'nativewind';
 
-type SignInStep = 'credentials' | 'second-factor';
+const SafeAreaView = styled(RNSafeAreaView);
 
 const SignIn = () => {
-  const { signIn } = useSignIn();
+  const { signIn, fetchStatus, errors } = useSignIn();
   const router = useRouter();
 
-  const [step, setStep] = useState<SignInStep>('credentials');
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; code?: string }>({});
-  const [statusMessage, setStatusMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [code, setCode] = useState('');
 
-  const emailValue = useMemo(() => normalizeEmail(emailAddress), [emailAddress]);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
 
-  const finishSignIn = async () => {
-    const { error } = await signIn.finalize();
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return;
-    }
-
-    router.replace('/(tabs)');
-  };
-
-  const resetState = async () => {
-    setStep('credentials');
-    setVerificationCode('');
-    setPassword('');
-    setFieldErrors({});
-    setStatusMessage('');
-
-    if (signIn) {
-      await signIn.reset();
-    }
-  };
-
-  const handleSubmitCredentials = async () => {
-    // if (!isLoaded || !signIn) return;
-
-    const nextErrors: { email?: string; password?: string } = {};
-    const emailError = validateEmail(emailValue);
-    const passwordError = validatePassword(password);
-
-    if (emailError) nextErrors.email = emailError;
-    if (passwordError) nextErrors.password = passwordError;
-
-    setFieldErrors(nextErrors);
-    setStatusMessage('');
-
-    if (emailError || passwordError) return;
-
-    setIsSubmitting(true);
-    const { error } = await signIn.password({
-      emailAddress: emailValue,
-      password,
+  const emailValid = validateEmail(emailAddress);
+  const passwordValid = password.length > 0;
+  const formValid = emailValid && passwordValid;
+  
+  const handleSubmit = async () => {
+    if (!formValid) return;
+    
+    const {error}  = await signIn.password({
+      emailAddress: normalizeEmail(emailAddress),
+      password
     });
-    setIsSubmitting(false);
 
     if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
+      console.error(JSON.stringify(error, null, 2));
       return;
-    }
-
+    } 
+    
     if (signIn.status === 'complete') {
-      await finishSignIn();
-      return;
+            await signIn.finalize({
+                navigate: ({ session, decorateUrl }) => {
+                    if (session?.currentTask) {
+                        console.log(session?.currentTask);
+                        return;
+                    }
+             
+    
+ const url = decorateUrl('/(tabs)');
+                    if (url.startsWith('http')) {
+                        // Only use window.location on web platform
+                        if (typeof window !== 'undefined' && window.location) {
+                            window.location.href = url;
+                        } else {
+                            // On native, just use router navigation
+                            router.replace('/(tabs)' as Href);
+                        }
+                    } else {
+                        router.replace(url as Href);
+                    }
+                },
+            });
+        } else if (signIn.status === 'needs_second_factor') {
+            // Handle MFA if needed (not implemented in this basic flow)
+            console.log('MFA required');
+        } else if (signIn.status === 'needs_client_trust') {
+            // Send email code for client trust verification
+            const emailCodeFactor = signIn.supportedSecondFactors.find(
+                (factor) => factor.strategy === 'email_code'
+            );
+
+            if (emailCodeFactor) {
+                await signIn.mfa.sendEmailCode();
+            }
+        } else {
+            console.error('Sign-in attempt not complete:', signIn);
+        }
+    };
+
+      const handleVerify = async () => {
+        await signIn.mfa.verifyEmailCode({ code });
+
+        if (signIn.status === 'complete') {
+            await signIn.finalize({
+                navigate: ({ session, decorateUrl }) => {
+                },
+            });
+        } else {
+            console.error('Sign-in attempt not complete:', signIn);
+        }
+    };
+
+     // Show verification screen if client trust is needed
+    if (signIn.status === 'needs_client_trust') {
+        return (
+            <SafeAreaView className="auth-safe-area">
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    className="auth-screen"
+                >
+                    <ScrollView
+                        className="auth-scroll"
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View className="auth-content">
+                            {/* Branding */}
+                            <View className="auth-brand-block">
+                                <View className="auth-logo-wrap">
+                                    <View className="auth-logo-mark">
+                                        <Text className="auth-logo-mark-text">R</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="auth-wordmark">Recurrly</Text>
+                                        <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                                    </View>
+                                </View>
+                                <Text className="auth-title">Verify your identity</Text>
+                                <Text className="auth-subtitle">
+                                    We sent a verification code to your email
+                                </Text>
+                            </View>
+
+                            {/* Verification Form */}
+                            <View className="auth-card">
+                                <View className="auth-form">
+                                    <View className="auth-field">
+                                        <Text className="auth-label">Verification Code</Text>
+                                        <TextInput
+                                            className="auth-input"
+                                            value={code}
+                                            placeholder="Enter 6-digit code"
+                                            placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                            onChangeText={setCode}
+                                            keyboardType="number-pad"
+                                            autoComplete="one-time-code"
+                                            maxLength={6}
+                                        />
+                                        {errors.fields.code && (
+                                            <Text className="auth-error">{errors.fields.code.message}</Text>
+                                        )}
+                                    </View>
+
+                                    <Pressable
+                                        className={`auth-button ${(!code || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                        onPress={handleVerify}
+                                        disabled={!code || fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-button-text">
+                                            {fetchStatus === 'fetching' ? 'Verifying...' : 'Verify'}
+                                        </Text>
+                                    </Pressable>
+
+                                    <Pressable
+                                        className="auth-secondary-button"
+                                        onPress={() => signIn.mfa.sendEmailCode()}
+                                        disabled={fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-secondary-button-text">Resend Code</Text>
+                                    </Pressable>
+
+                                    <Pressable
+                                        className="auth-secondary-button"
+                                        onPress={() => signIn.reset()}
+                                        disabled={fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-secondary-button-text">Start Over</Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        );
     }
 
-    if (signIn.status === 'needs_second_factor') {
-      setStep('second-factor');
-      setStatusMessage('Two-step verification is required. Enter your authenticator or backup code to continue.');
-      return;
-    }
+    // Main sign-in form
+    return (
+        <SafeAreaView className="auth-safe-area">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="auth-screen"
+            >
+                <ScrollView
+                    className="auth-scroll"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View className="auth-content">
+                        {/* Branding */}
+                        <View className="auth-brand-block">
+                            <View className="auth-logo-wrap">
+                                <View className="auth-logo-mark">
+                                    <Text className="auth-logo-mark-text">R</Text>
+                                </View>
+                                <View>
+                                    <Text className="auth-wordmark">Recurrly</Text>
+                                    <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                                </View>
+                            </View>
+                            <Text className="auth-title">Welcome back</Text>
+                            <Text className="auth-subtitle">
+                                Sign in to continue managing your subscriptions
+                            </Text>
+                        </View>
 
-    setStatusMessage('We could not finish signing you in. Try again.');
-  };
+                        {/* Sign-In Form */}
+                        <View className="auth-card">
+                            <View className="auth-form">
+                                <View className="auth-field">
+                                    <Text className="auth-label">Email Address</Text>
+                                    <TextInput
+                                        className={`auth-input ${emailTouched && !emailValid && 'auth-input-error'}`}
+                                        autoCapitalize="none"
+                                        value={emailAddress}
+                                        placeholder="name@example.com"
+                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        onChangeText={setEmailAddress}
+                                        onBlur={() => setEmailTouched(true)}
+                                        keyboardType="email-address"
+                                        autoComplete="email"
+                                    />
+                                    {emailTouched && !emailValid && (
+                                        <Text className="auth-error">Please enter a valid email address</Text>
+                                    )}
+                                    {errors.fields.identifier && (
+                                        <Text className="auth-error">{errors.fields.identifier.message}</Text>
+                                    )}
+                                </View>
 
-  const handleVerifySecondFactor = async (useBackupCode = false) => {
-    // if (!isLoaded || !signIn) return;
+                                <View className="auth-field">
+                                    <Text className="auth-label">Password</Text>
+                                    <TextInput
+                                        className={`auth-input ${passwordTouched && !passwordValid && 'auth-input-error'}`}
+                                        value={password}
+                                        placeholder="Enter your password"
+                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        secureTextEntry
+                                        onChangeText={setPassword}
+                                        onBlur={() => setPasswordTouched(true)}
+                                        autoComplete="password"
+                                    />
+                                    {passwordTouched && !passwordValid && (
+                                        <Text className="auth-error">Password is required</Text>
+                                    )}
+                                    {errors.fields.password && (
+                                        <Text className="auth-error">{errors.fields.password.message}</Text>
+                                    )}
+                                </View>
 
-    if (!verificationCode.trim()) {
-      setFieldErrors({ code: 'Enter the verification code.' });
-      return;
-    }
+                                <Pressable
+                                    className={`auth-button ${(!formValid || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                    onPress={handleSubmit}
+                                    disabled={!formValid || fetchStatus === 'fetching'}
+                                >
+                                    <Text className="auth-button-text">
+                                        {fetchStatus === 'fetching' ? 'Signing In...' : 'Sign In'}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
 
-    setIsSubmitting(true);
-    const { error } = useBackupCode
-      ? await signIn.mfa.verifyBackupCode({ code: verificationCode.trim() })
-      : await signIn.mfa.verifyTOTP({ code: verificationCode.trim() });
-    setIsSubmitting(false);
-
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return;
-    }
-
-    if (signIn.status === 'complete') {
-      await finishSignIn();
-      return;
-    }
-
-    setStatusMessage('Verification completed, but the session is not ready yet. Please try again.');
-  };
-
-  // if (!isLoaded) {
-  //   return (
-  //     <View className="flex-1 items-center justify-center bg-background">
-  //       <ActivityIndicator color="#ea7a53" size="large" />
-  //     </View>
-  //   );
-  // }
-
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="flex-grow justify-center px-5 py-8" keyboardShouldPersistTaps="handled">
-        <View className="mx-auto w-full max-w-md">
-          <View className="mb-6 flex-row items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-accent">
-              <Text className="font-sans-extrabold text-2xl text-white">R</Text>
-            </View>
-            <View>
-              <Text className="font-sans-extrabold text-3xl text-foreground">Recurly</Text>
-              <Text className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Smart billing</Text>
-            </View>
-          </View>
-
-          <View className="rounded-4xl border border-border bg-card p-5">
-            <Text className="text-3xl font-sans-extrabold text-foreground">Welcome back</Text>
-            <Text className="mt-2 text-base text-muted-foreground">
-              Sign in to continue managing your subscriptions.
-            </Text>
-
-            <View className="mt-6 rounded-3xl border border-border bg-white p-4">
-              {statusMessage ? (
-                <View className="mb-4 rounded-2xl border border-border bg-muted px-4 py-3">
-                  <Text className="text-sm text-foreground">{statusMessage}</Text>
-                </View>
-              ) : null}
-
-              {step === 'credentials' ? (
-                <>
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Email</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      keyboardType="email-address"
-                      placeholder="Enter your email"
-                      placeholderTextColor="#7f7058"
-                      value={emailAddress}
-                      onChangeText={setEmailAddress}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.email ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.email}</Text> : null}
-                  </View>
-
-                  <View className="mb-3">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Password</Text>
-                    <TextInput
-                      autoComplete="password"
-                      placeholder="Enter your password"
-                      placeholderTextColor="#7f7058"
-                      secureTextEntry
-                      value={password}
-                      onChangeText={setPassword}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.password ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.password}</Text> : null}
-                  </View>
-
-                  <Text className="mb-4 text-xs leading-5 text-muted-foreground">
-                    Use the email linked to your account. We&apos;ll keep your session secure on this device.
-                  </Text>
-
-                  <Pressable
-                    onPress={handleSubmitCredentials}
-                    disabled={isSubmitting}
-                    className="rounded-2xl bg-accent px-5 py-4"
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-center font-sans-bold text-base text-white">Sign in</Text>
-                    )}
-                  </Pressable>
-
-                  <View className="mt-4 flex-row justify-center">
-                    <Text className="text-sm text-muted-foreground">Need an account? </Text>
-                    <Link href="/sign-up" asChild>
-                      <Pressable>
-                        <Text className="text-sm font-sans-semibold text-accent">Create one</Text>
-                      </Pressable>
-                    </Link>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Verification code</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      autoComplete="one-time-code"
-                      keyboardType="number-pad"
-                      placeholder="Enter your code"
-                      placeholderTextColor="#7f7058"
-                      value={verificationCode}
-                      onChangeText={setVerificationCode}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base tracking-[0.24em] text-foreground"
-                    />
-                    {fieldErrors.code ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.code}</Text> : null}
-                  </View>
-
-                  <Pressable
-                    onPress={() => handleVerifySecondFactor(false)}
-                    disabled={isSubmitting}
-                    className="rounded-2xl bg-accent px-5 py-4"
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-center font-sans-bold text-base text-white">Verify code</Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => handleVerifySecondFactor(true)}
-                    disabled={isSubmitting}
-                    className="mt-3 rounded-2xl border border-border bg-white px-5 py-4"
-                  >
-                    <Text className="text-center font-sans-bold text-base text-foreground">Use backup code</Text>
-                  </Pressable>
-
-                  <Pressable onPress={resetState} className="mt-4">
-                    <Text className="text-center text-sm font-sans-semibold text-accent">Use a different account</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+                        {/* Sign-Up Link */}
+                        <View className="auth-link-row">
+                            <Text className="auth-link-copy">Don't have an account?</Text>
+                            <Link href="/(auth)/sign-up" asChild>
+                                <Pressable>
+                                    <Text className="auth-link">Create Account</Text>
+                                </Pressable>
+                            </Link>
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
 };
-
-export default SignIn;
+export default SignIn

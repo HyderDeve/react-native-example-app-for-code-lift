@@ -1,296 +1,273 @@
-import '@/global.css';
-import { getClerkErrorMessage, normalizeEmail, validateEmail, validateName, validatePassword } from '@/lib/auth';
-import { useSignUp } from '@clerk/expo';
-import { Link, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Link, useRouter, type Href } from 'expo-router';
+import { useSignUp, useAuth } from '@clerk/expo';
+import { useState } from 'react';
+import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
+import { styled } from 'nativewind';
 
-type SignUpStep = 'details' | 'verify';
+const SafeAreaView = styled(RNSafeAreaView);
 
 const SignUp = () => {
-  const { signUp } = useSignUp();
-  const router = useRouter();
+    const { signUp, errors, fetchStatus } = useSignUp();
+    const { isSignedIn } = useAuth();
+    const router = useRouter();
 
-  const [step, setStep] = useState<SignUpStep>('details');
-  const [fullName, setFullName] = useState('');
-  const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; code?: string }>({});
-  const [statusMessage, setStatusMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+    const [emailAddress, setEmailAddress] = useState('');
+    const [password, setPassword] = useState('');
+    const [code, setCode] = useState('');
 
-  const emailValue = useMemo(() => normalizeEmail(emailAddress), [emailAddress]);
+    // Validation states
+    const [emailTouched, setEmailTouched] = useState(false);
+    const [passwordTouched, setPasswordTouched] = useState(false);
 
-  const finishSignUp = async () => {
-    const { error } = await signUp.finalize();
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return;
+    // Client-side validation
+    const emailValid = emailAddress.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
+    const passwordValid = password.length === 0 || password.length >= 8;
+    const formValid = emailAddress.length > 0 && password.length >= 8 && emailValid;
+
+    const handleSubmit = async () => {
+        if (!formValid) return;
+
+        const { error } = await signUp.password({
+            emailAddress,
+            password,
+        });
+
+        if (error) {
+            console.error(JSON.stringify(error, null, 2));
+            return;
+        }
+
+        // Send verification email
+        if (!error) {
+            await signUp.verifications.sendEmailCode();
+        }
+    };
+
+    const handleVerify = async () => {
+        await signUp.verifications.verifyEmailCode({
+            code,
+        });
+
+        if (signUp.status === 'complete') {
+            await signUp.finalize({
+                navigate: ({ session, decorateUrl }) => {
+                    if (session?.currentTask) {
+                        console.log(session?.currentTask);
+                        return;
+                    }
+
+                    const url = decorateUrl('/(tabs)');
+                    if (url.startsWith('http')) {
+                        // Only use window.location on web platform
+                        if (typeof window !== 'undefined' && window.location) {
+                            window.location.href = url;
+                        } else {
+                            // On native, just use router navigation
+                            router.replace('/(tabs)' as Href);
+                        }
+                    } else {
+                        router.replace(url as Href);
+                    }
+                },
+            });
+        } else {
+            console.error('Sign-up attempt not complete:', signUp);
+        }
+    };
+
+    // Don't show anything if already signed in or sign-up is complete
+    if (signUp.status === 'complete' || isSignedIn) {
+        return null;
     }
 
-    router.replace('/(tabs)');
-  };
+    // Show verification screen if email needs verification
+    if (
+        signUp.status === 'missing_requirements' &&
+        signUp.unverifiedFields.includes('email_address') &&
+        signUp.missingFields.length === 0
+    ) {
+        return (
+            <SafeAreaView className="auth-safe-area">
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    className="auth-screen"
+                >
+                    <ScrollView
+                        className="auth-scroll"
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View className="auth-content">
+                            {/* Branding */}
+                            <View className="auth-brand-block">
+                                <View className="auth-logo-wrap">
+                                    <View className="auth-logo-mark">
+                                        <Text className="auth-logo-mark-text">R</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="auth-wordmark">Recurrly</Text>
+                                        <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                                    </View>
+                                </View>
+                                <Text className="auth-title">Verify your email</Text>
+                                <Text className="auth-subtitle">
+                                    We sent a verification code to {emailAddress}
+                                </Text>
+                            </View>
 
-  const startOver = async () => {
-    setStep('details');
-    setVerificationCode('');
-    setStatusMessage('');
-    setFieldErrors({});
+                            {/* Verification Form */}
+                            <View className="auth-card">
+                                <View className="auth-form">
+                                    <View className="auth-field">
+                                        <Text className="auth-label">Verification Code</Text>
+                                        <TextInput
+                                            className="auth-input"
+                                            value={code}
+                                            placeholder="Enter 6-digit code"
+                                            placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                            onChangeText={setCode}
+                                            keyboardType="number-pad"
+                                            autoComplete="one-time-code"
+                                            maxLength={6}
+                                        />
+                                        {errors.fields.code && (
+                                            <Text className="auth-error">{errors.fields.code.message}</Text>
+                                        )}
+                                    </View>
 
-    if (signUp) {
-      await signUp.reset();
-    }
-  };
+                                    <Pressable
+                                        className={`auth-button ${(!code || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                        onPress={handleVerify}
+                                        disabled={!code || fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-button-text">
+                                            {fetchStatus === 'fetching' ? 'Verifying...' : 'Verify Email'}
+                                        </Text>
+                                    </Pressable>
 
-  const requestVerificationCode = async () => {
-    const { error } = await signUp.verifications.sendEmailCode();
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return false;
-    }
-
-    setStep('verify');
-    setStatusMessage('We sent a verification code to your email. Enter it to finish creating your account.');
-    return true;
-  };
-
-  const handleCreateAccount = async () => {
-    // if (!isLoaded || !signUp) return;
-
-    const nextErrors: typeof fieldErrors = {};
-    const nameError = validateName(fullName);
-    const emailError = validateEmail(emailValue);
-    const passwordError = validatePassword(password);
-
-    if (nameError) nextErrors.name = nameError;
-    if (emailError) nextErrors.email = emailError;
-    if (passwordError) nextErrors.password = passwordError;
-    if (confirmPassword !== password) nextErrors.confirmPassword = 'Passwords do not match.';
-
-    setFieldErrors(nextErrors);
-    setStatusMessage('');
-
-    if (nameError || emailError || passwordError || confirmPassword !== password) return;
-
-    setIsSubmitting(true);
-    const names = fullName.trim().split(/\s+/);
-    const firstName = names[0];
-    const lastName = names.slice(1).join(' ') || undefined;
-
-    const { error } = await signUp.password({
-      emailAddress: emailValue,
-      password,
-      firstName,
-      lastName,
-    });
-    setIsSubmitting(false);
-
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return;
-    }
-
-    if (signUp.status === 'complete') {
-      await finishSignUp();
-      return;
-    }
-
-    await requestVerificationCode();
-  };
-
-  const handleVerifyCode = async () => {
-    // if (!isLoaded || !signUp) return;
-
-    if (!verificationCode.trim()) {
-      setFieldErrors({ code: 'Enter the verification code.' });
-      return;
-    }
-
-    setIsSubmitting(true);
-    const { error } = await signUp.verifications.verifyEmailCode({ code: verificationCode.trim() });
-    setIsSubmitting(false);
-
-    if (error) {
-      setStatusMessage(getClerkErrorMessage(error));
-      return;
+                                    <Pressable
+                                        className="auth-secondary-button"
+                                        onPress={() => signUp.verifications.sendEmailCode()}
+                                        disabled={fetchStatus === 'fetching'}
+                                    >
+                                        <Text className="auth-secondary-button-text">Resend Code</Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        );
     }
 
-    if (signUp.status === 'complete') {
-      await finishSignUp();
-      return;
-    }
+    // Main sign-up form
+    return (
+        <SafeAreaView className="auth-safe-area">
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="auth-screen"
+            >
+                <ScrollView
+                    className="auth-scroll"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View className="auth-content">
+                        {/* Branding */}
+                        <View className="auth-brand-block">
+                            <View className="auth-logo-wrap">
+                                <View className="auth-logo-mark">
+                                    <Text className="auth-logo-mark-text">R</Text>
+                                </View>
+                                <View>
+                                    <Text className="auth-wordmark">Recurrly</Text>
+                                    <Text className="auth-wordmark-sub">SUBSCRIPTIONS</Text>
+                                </View>
+                            </View>
+                            <Text className="auth-title">Create your account</Text>
+                            <Text className="auth-subtitle">
+                                Start tracking your subscriptions and never miss a payment
+                            </Text>
+                        </View>
 
-    setStatusMessage('Verification succeeded, but the account setup is not finished yet. Please try again.');
-  };
+                        {/* Sign-Up Form */}
+                        <View className="auth-card">
+                            <View className="auth-form">
+                                <View className="auth-field">
+                                    <Text className="auth-label">Email Address</Text>
+                                    <TextInput
+                                        className={`auth-input ${emailTouched && !emailValid && 'auth-input-error'}`}
+                                        autoCapitalize="none"
+                                        value={emailAddress}
+                                        placeholder="name@example.com"
+                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        onChangeText={setEmailAddress}
+                                        onBlur={() => setEmailTouched(true)}
+                                        keyboardType="email-address"
+                                        autoComplete="email"
+                                    />
+                                    {emailTouched && !emailValid && (
+                                        <Text className="auth-error">Please enter a valid email address</Text>
+                                    )}
+                                    {errors.fields.emailAddress && (
+                                        <Text className="auth-error">{errors.fields.emailAddress.message}</Text>
+                                    )}
+                                </View>
 
-  // if (!isLoaded) {
-  //   return (
-  //     <View className="flex-1 items-center justify-center bg-background">
-  //       <ActivityIndicator color="#ea7a53" size="large" />
-  //     </View>
-  //   );
-  // }
+                                <View className="auth-field">
+                                    <Text className="auth-label">Password</Text>
+                                    <TextInput
+                                        className={`auth-input ${passwordTouched && !passwordValid && 'auth-input-error'}`}
+                                        value={password}
+                                        placeholder="Create a strong password"
+                                        placeholderTextColor="rgba(0, 0, 0, 0.4)"
+                                        secureTextEntry
+                                        onChangeText={setPassword}
+                                        onBlur={() => setPasswordTouched(true)}
+                                        autoComplete="password-new"
+                                    />
+                                    {passwordTouched && !passwordValid && (
+                                        <Text className="auth-error">Password must be at least 8 characters</Text>
+                                    )}
+                                    {errors.fields.password && (
+                                        <Text className="auth-error">{errors.fields.password.message}</Text>
+                                    )}
+                                    {!passwordTouched && (
+                                        <Text className="auth-helper">Minimum 8 characters required</Text>
+                                    )}
+                                </View>
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-background">
-      <ScrollView contentContainerClassName="flex-grow justify-center px-5 py-8" keyboardShouldPersistTaps="handled">
-        <View className="mx-auto w-full max-w-md">
-          <View className="mb-6 flex-row items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-2xl bg-accent">
-              <Text className="font-sans-extrabold text-2xl text-white">R</Text>
-            </View>
-            <View>
-              <Text className="font-sans-extrabold text-3xl text-foreground">Recurly</Text>
-              <Text className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Smart billing</Text>
-            </View>
-          </View>
+                                <Pressable
+                                    className={`auth-button ${(!formValid || fetchStatus === 'fetching') && 'auth-button-disabled'}`}
+                                    onPress={handleSubmit}
+                                    disabled={!formValid || fetchStatus === 'fetching'}
+                                >
+                                    <Text className="auth-button-text">
+                                        {fetchStatus === 'fetching' ? 'Creating Account...' : 'Create Account'}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
 
-          <View className="rounded-4xl border border-border bg-card p-5">
-            <Text className="text-3xl font-sans-extrabold text-foreground">Create your account</Text>
-            <Text className="mt-2 text-base text-muted-foreground">
-              Start tracking subscriptions with a secure profile and one place for billing.
-            </Text>
+                        {/* Sign-In Link */}
+                        <View className="auth-link-row">
+                            <Text className="auth-link-copy">Already have an account?</Text>
+                            <Link href="/(auth)/sign-in" asChild>
+                                <Pressable>
+                                    <Text className="auth-link">Sign In</Text>
+                                </Pressable>
+                            </Link>
+                        </View>
 
-            <View className="mt-6 rounded-3xl border border-border bg-white p-4">
-              {statusMessage ? (
-                <View className="mb-4 rounded-2xl border border-border bg-muted px-4 py-3">
-                  <Text className="text-sm text-foreground">{statusMessage}</Text>
-                </View>
-              ) : null}
-
-              {step === 'details' ? (
-                <>
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Full name</Text>
-                    <TextInput
-                      autoComplete="name"
-                      placeholder="Enter your full name"
-                      placeholderTextColor="#7f7058"
-                      value={fullName}
-                      onChangeText={setFullName}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.name ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.name}</Text> : null}
-                  </View>
-
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Email</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      keyboardType="email-address"
-                      placeholder="Enter your email"
-                      placeholderTextColor="#7f7058"
-                      value={emailAddress}
-                      onChangeText={setEmailAddress}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.email ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.email}</Text> : null}
-                  </View>
-
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Password</Text>
-                    <TextInput
-                      autoComplete="new-password"
-                      placeholder="Create a password"
-                      placeholderTextColor="#7f7058"
-                      secureTextEntry
-                      value={password}
-                      onChangeText={setPassword}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.password ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.password}</Text> : null}
-                  </View>
-
-                  <View className="mb-3">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Confirm password</Text>
-                    <TextInput
-                      autoComplete="new-password"
-                      placeholder="Repeat your password"
-                      placeholderTextColor="#7f7058"
-                      secureTextEntry
-                      value={confirmPassword}
-                      onChangeText={setConfirmPassword}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base text-foreground"
-                    />
-                    {fieldErrors.confirmPassword ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.confirmPassword}</Text> : null}
-                  </View>
-
-                  <Text className="mb-4 text-xs leading-5 text-muted-foreground">
-                    We use your name and email only to secure your account and personalize the experience.
-                  </Text>
-
-                  <Pressable
-                    onPress={handleCreateAccount}
-                    disabled={isSubmitting}
-                    className="rounded-2xl bg-accent px-5 py-4"
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-center font-sans-bold text-base text-white">Create account</Text>
-                    )}
-                  </Pressable>
-
-                  <View className="mt-4 flex-row justify-center">
-                    <Text className="text-sm text-muted-foreground">Already have an account? </Text>
-                    <Link href="/sign-in" asChild>
-                      <Pressable>
-                        <Text className="text-sm font-sans-semibold text-accent">Sign in</Text>
-                      </Pressable>
-                    </Link>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <View className="mb-4">
-                    <Text className="mb-2 text-sm font-sans-semibold text-foreground">Verification code</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      autoComplete="one-time-code"
-                      keyboardType="number-pad"
-                      placeholder="Enter your code"
-                      placeholderTextColor="#7f7058"
-                      value={verificationCode}
-                      onChangeText={setVerificationCode}
-                      className="rounded-2xl border border-border bg-[#fffdf5] px-4 py-3 text-base tracking-[0.24em] text-foreground"
-                    />
-                    {fieldErrors.code ? <Text className="mt-2 text-sm text-destructive">{fieldErrors.code}</Text> : null}
-                  </View>
-
-                  <Pressable
-                    onPress={handleVerifyCode}
-                    disabled={isSubmitting}
-                    className="rounded-2xl bg-accent px-5 py-4"
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-center font-sans-bold text-base text-white">Verify email</Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable
-                    onPress={requestVerificationCode}
-                    disabled={isSubmitting}
-                    className="mt-3 rounded-2xl border border-border bg-white px-5 py-4"
-                  >
-                    <Text className="text-center font-sans-bold text-base text-foreground">Resend code</Text>
-                  </Pressable>
-
-                  <Pressable onPress={startOver} className="mt-4">
-                    <Text className="text-center text-sm font-sans-semibold text-accent">Edit account details</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
+                        {/* Required for Clerk's bot protection */}
+                        <View nativeID="clerk-captcha" />
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
 };
 
 export default SignUp;
