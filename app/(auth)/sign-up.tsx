@@ -1,3 +1,4 @@
+import { posthog } from '@/lib/posthog';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useSignUp, useAuth } from '@clerk/expo';
@@ -34,6 +35,9 @@ const SignUp = () => {
         });
 
         if (error) {
+            posthog?.captureException(new Error('Clerk sign-up request failed'), {
+                auth_flow: 'password',
+            });
             console.error(JSON.stringify(error, null, 2));
             return;
         }
@@ -41,6 +45,9 @@ const SignUp = () => {
         // Send verification email
         if (!error) {
             await signUp.verifications.sendEmailCode();
+            posthog?.capture('sign_up_verification_requested', {
+                verification_method: 'email_code',
+            });
         }
     };
 
@@ -56,6 +63,13 @@ const SignUp = () => {
                         console.log(session?.currentTask);
                         return;
                     }
+
+                    if (session?.user?.id) {
+                        posthog?.identify(session.user.id);
+                    }
+                    posthog?.capture('sign_up_completed', {
+                        verification_method: 'email_code',
+                    });
 
                     const url = decorateUrl('/(tabs)');
                     if (url.startsWith('http')) {

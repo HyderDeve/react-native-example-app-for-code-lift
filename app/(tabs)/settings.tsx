@@ -1,3 +1,4 @@
+import { posthog } from '@/lib/posthog';
 import { Text, View, Pressable, Image } from 'react-native'
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import { styled } from "nativewind";
@@ -14,7 +15,12 @@ const Settings = () => {
 
       try {
             await signOut();
+            posthog?.capture('sign_out_completed');
+            posthog?.reset();
         } catch (error) {
+            posthog?.captureException(new Error('Clerk sign-out request failed'), {
+                auth_flow: 'sign_out',
+            });
             console.error('Sign-out failed:', error);
             // Don't reset analytics if sign-out failed
         }

@@ -1,5 +1,5 @@
 import '@/global.css';
-import { validateEmail} from '@/lib/auth';
+import { posthog } from '@/lib/posthog';
 import { useSignIn } from '@clerk/expo';
 import { Link, useRouter, type Href } from 'expo-router';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform} from 'react-native';
@@ -33,6 +33,9 @@ const SignIn = () => {
     });
 
     if (error) {
+      posthog?.captureException(new Error('Clerk sign-in request failed'), {
+        auth_flow: 'password',
+      });
       console.error(JSON.stringify(error, null, 2));
       return;
     } 
@@ -44,6 +47,13 @@ const SignIn = () => {
                         console.log(session?.currentTask);
                         return;
                     }
+
+                    if (session?.user?.id) {
+                        posthog?.identify(session.user.id);
+                    }
+                    posthog?.capture('sign_in_completed', {
+                        auth_method: 'password',
+                    });
              
     
  const url = decorateUrl('/(tabs)');
@@ -86,11 +96,32 @@ const SignIn = () => {
                       if (session?.currentTask) {
                         console.log(session?.currentTask);
                         return;
-                        } 
+                        }
+
+                      if (session?.user?.id) {
+                        posthog?.identify(session.user.id);
+                      }
+                      posthog?.capture('sign_in_completed', {
+                        auth_method: 'email_code',
+                      });
                       }
             });
         } else {
             console.error('Sign-in attempt not complete:', signIn);
+        }
+    };
+
+    const handleResendVerificationCode = async () => {
+        try {
+            await signIn.mfa.sendEmailCode();
+            posthog?.capture('verification_code_resent', {
+                auth_flow: 'client_trust',
+            });
+        } catch (error) {
+            posthog?.captureException(new Error('Clerk verification code resend failed'), {
+                auth_flow: 'client_trust',
+            });
+            console.error('Verification code resend failed:', error);
         }
     };
 
@@ -157,7 +188,7 @@ const SignIn = () => {
 
                                     <Pressable
                                         className="auth-secondary-button"
-                                        onPress={() => signIn.mfa.sendEmailCode()}
+                                        onPress={handleResendVerificationCode}
                                         disabled={fetchStatus === 'fetching'}
                                     >
                                         <Text className="auth-secondary-button-text">Resend Code</Text>
