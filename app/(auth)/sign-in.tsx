@@ -1,5 +1,5 @@
 import '@/global.css';
-import { normalizeEmail, validateEmail} from '@/lib/auth';
+import { validateEmail} from '@/lib/auth';
 import { useSignIn } from '@clerk/expo';
 import { Link, useRouter, type Href } from 'expo-router';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform} from 'react-native';
@@ -20,7 +20,7 @@ const SignIn = () => {
   const [emailTouched, setEmailTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  const emailValid = validateEmail(emailAddress);
+  const emailValid =  emailAddress.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
   const passwordValid = password.length > 0;
   const formValid = emailValid && passwordValid;
   
@@ -28,7 +28,7 @@ const SignIn = () => {
     if (!formValid) return;
     
     const {error}  = await signIn.password({
-      emailAddress: normalizeEmail(emailAddress),
+      emailAddress,
       password
     });
 
@@ -83,7 +83,11 @@ const SignIn = () => {
         if (signIn.status === 'complete') {
             await signIn.finalize({
                 navigate: ({ session, decorateUrl }) => {
-                },
+                      if (session?.currentTask) {
+                        console.log(session?.currentTask);
+                        return;
+                        } 
+                      }
             });
         } else {
             console.error('Sign-in attempt not complete:', signIn);
