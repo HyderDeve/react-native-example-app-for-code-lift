@@ -3,7 +3,7 @@ import { styled } from 'nativewind';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
 import {useState} from 'react';
 import SubscriptionCard from '@/components/SubscriptionCard';
-import useSubscriptionStore from '@/lib/subscriptionStore';
+import { useSubscriptionStore } from '@/lib/subscriptionStore';
 
 const SafeAreaView = styled(RNSafeAreaView);
 
@@ -14,7 +14,7 @@ const Subscriptions = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const {subscriptions} = useSubscriptionStore();
 
-  const filterSubscriptions = subscriptions.filter((subscription) => subscription.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredSubscriptions = subscriptions.filter((subscription) => subscription.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
   subscription.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
   subscription.plan?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -22,7 +22,7 @@ const Subscriptions = () => {
   return (
     <SafeAreaView className='flex-1 bg-background p-5'>
       <FlatList 
-        data = {filterSubscriptions}
+        data = {filteredSubscriptions}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View className='px-5 pt-5'>
