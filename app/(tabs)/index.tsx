@@ -1,16 +1,18 @@
 import "@/global.css";
 // import { Link } from "expo-router";
-import { Text, View, Image as RNImage, FlatList } from "react-native";
+import { Text, View, Image as RNImage, FlatList, Pressable } from "react-native";
 import { styled } from 'nativewind';
 import {icons} from "@/constants/icons";
 import images from '@/constants/images';
 import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-import { HOME_BALANCE, HOME_SUBSCRIPTIONS, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
+import { HOME_BALANCE, HOME_USER, UPCOMING_SUBSCRIPTIONS } from "@/constants/data";
 import ListHeading from "@/components/ListHeading";
 import UpcomingSubscriptionCard from "@/components/UpcomingSubscriptionCard";
 import SubscriptionCard from "@/components/SubscriptionCard";
+import SubscriptionModal from "@/components/SubscriptionModal";
 import { posthog } from "@/lib/posthog";
 import { formatCurrency } from "@/lib/utils";
+import { useSubscriptionStore } from "@/lib/subscriptionStore";
 import dayjs from "dayjs";
 import { useState } from "react";
 import { useUser } from "@clerk/expo";
@@ -21,7 +23,9 @@ const Image = styled(RNImage);
 export default function App() {
 
   const { user } = useUser();
+  const { subscriptions } = useSubscriptionStore();
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<string | null>(null);
+  const [isCreateModalVisible, setCreateModalVisible] = useState(false);
 
   
   return (
@@ -35,9 +39,9 @@ export default function App() {
             <Image source={user?.imageUrl ? { uri: user.imageUrl } : images.avatar} className="home-avatar"/>
             <Text className="home-user-name">{HOME_USER.name}</Text>
           </View>
-          <View>
+          <Pressable onPress={() => setCreateModalVisible(true)}>
             <Image source={icons.add} className="home-add-icon" style = {{width : 36, height : 36}}></Image>
-          </View>
+          </Pressable>
         </View>
 
         <View className="home-balance-card">
@@ -64,7 +68,7 @@ export default function App() {
 
               </>
   )}
-            data={HOME_SUBSCRIPTIONS}
+            data={subscriptions}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (<SubscriptionCard {... item}
             expanded = {expandedSubscriptionId === item.id}
@@ -97,6 +101,11 @@ export default function App() {
       {/* <Link href={{ pathname: '/subscriptions/[id]', params: { id: 'spotify' }}} className = "mt-4 rounded bg-primary text-white p-4">
         Spotify Subscription
       </Link> */}
+
+      <SubscriptionModal
+        visible={isCreateModalVisible}
+        onClose={() => setCreateModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
