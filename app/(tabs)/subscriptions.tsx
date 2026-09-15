@@ -42,10 +42,11 @@ const Subscriptions = () => {
           onPress={() => setExpandedId(expandedId === item.id ? null : item.id)} 
           />
         )}
-        contentContainerStyle = {{ paddingHorizontal : 20, paddingBottom : 20, gap : 12}}
+        contentContainerStyle = {{ paddingHorizontal : 20, paddingBottom : 60 ,gap : 12 }}
         showsVerticalScrollIndicator = {false}
         keyboardShouldPersistTaps = 'handled'
         keyboardDismissMode='on-drag'
+      
       />
     </SafeAreaView>
   )
